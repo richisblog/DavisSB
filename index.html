@@ -398,6 +398,32 @@
             }
         });
 
+        // 添加拖放事件监听器
+        document.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            document.body.style.backgroundColor = '#f0f0f0';
+        });
+
+        document.addEventListener('dragleave', (event) => {
+            document.body.style.backgroundColor = '#fff';
+        });
+
+        document.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            document.body.style.backgroundColor = '#fff';
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                if (file.size <= 15000) {
+                    alert('错误，请检查操作是否正确');
+                    document.getElementById('downloadBtn').disabled = true;
+                    document.getElementById('downloadLabel').disabled = true;
+                    return;
+                }
+                const fileContent = await file.text();
+                await icsExport(fileContent);
+            }
+        });
+
         document.getElementById('downloadBtn').addEventListener('click', () => {
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
             const link = document.createElement("a");
