@@ -387,6 +387,11 @@
         document.getElementById('fileInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
+                // 检查上传文件大小是否大于1000字节
+                if (file.size <= 1000) {
+                    alert('错误，请检查操作是否正确');
+                    return;
+                }
                 const fileContent = await file.text();
                 await icsExport(fileContent);
             }
@@ -400,6 +405,13 @@
             link.setAttribute("download", "schedule.ics");
             document.body.appendChild(link);
             link.click();
+
+            // 检查下载文件大小是否大于300字节
+            if (blob.size <= 300) {
+                alert('错误，请检查操作是否正确');
+                URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+            }
         });
     </script>
     <!-- 添加二维码图片到页面底部 -->
