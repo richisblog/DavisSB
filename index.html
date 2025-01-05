@@ -82,7 +82,7 @@
         .navbar a {
             display: inline-block;
             margin: 0 15px;
-            background-color: transparent; /* 白色文字 */
+            background-color: transparent;=
             color: white;
             padding: 10px 20px;
             text-decoration: none;
@@ -90,7 +90,7 @@
             transition: background-color 0.3s;
         }
         .navbar a:hover {
-            background-color: #b78727; /* 鼠标悬停时的背景色 */
+            background-color: #b78727;
         }
     </style>
 </head>
@@ -387,9 +387,11 @@
         document.getElementById('fileInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
-                // 检查上传文件大小是否大于1000字节
-                if (file.size <= 1000) {
+                // 检查上传文件大小是否大于150字节
+                if (file.size <= 15000) {
                     alert('错误，请检查操作是否正确');
+                    document.getElementById('downloadBtn').disabled = true;
+                    document.getElementById('downloadLabel').disabled = true;
                     return;
                 }
                 const fileContent = await file.text();
@@ -411,18 +413,18 @@
                 alert('错误，请检查操作是否正确');
                 URL.revokeObjectURL(url);
                 document.body.removeChild(link);
+                document.getElementById('downloadBtn').disabled = true;
+                document.getElementById('downloadLabel').disabled = true; // 确保下载按钮标签也禁用
             }
         });
     </script>
-    <!-- 添加二维码图片到页面底部 -->
-    <!-- 添加二维码图片到页面底部 -->
+
 <div class="container" style="text-align: center; margin-top: 20px;">
     <a href="https://www.xiaohongshu.com/user/profile/5d3c1440000000001200a9e3" target="_blank">
         <img src="xhscode.png" alt="小红书二维码" style="border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); width: 200px;">
     </a>
     <p style="margin-top: 10px;">欢迎关注我的小红书</p>
 </div>
-<!-- 添加GitHub二维码图片到页面底部 -->
 <div class="container" style="text-align: center; margin-top: 20px;">
     <a href="https://github.com/richisblog/DavisSB" target="_blank">
         <img src="githubcode.png" alt="GitHub二维码" style="border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); width: 200px;">
