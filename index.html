@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Export</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #output {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Schedule Builder日历导出</h1>
+    <p>上传 Schedule Builder.html :</p>
+    <input type="file" id="fileInput" accept=".html">
+    <button id="downloadBtn" disabled>下载</button>
+    <div id="output"></div>
+    <script>
+        const weekdy = {"M":"MO","T":"TU","W":"WE","R":"TH","F":"FR"};
+        const wkdynum = {"MO":1,"TU":2,"WE":3,"TH":4,"FR":5};
+
+        const eachCourseInfo = {};
+        const courseName = {};
+        const finalTime = {};
+        const dropTime = {};
+        const courseType = {};
+        const courseLocation = {};
+        const courseWeekdays = {};
+        const courseStarttime = {};
+        const courseEndtime = {};
+        const courseMeetingTime = {};
+
+        function sortWeekdays(weekdaysStr) {
+            const weekdayOrder = ["MO", "TU", "WE", "TH", "FR"];
+            const weekdaysList = weekdaysStr.split(',');
+            const sortedWeekdays = weekdaysList.sort((a, b) => weekdayOrder.indexOf(a) - weekdayOrder.indexOf(b));
+            return sortedWeekdays.join(',');
+        }
+
+        function adjustToWeekday(startDate, targetWeekday) {
+            let startWeekday = startDate.getDay();
+            console.log(startWeekday)
+            if (startWeekday === targetWeekday) {
+                return startDate;
+            }
+
+            let daysDiff = (targetWeekday - startWeekday  + 7) % 7;
+            let adjustedDate = new Date(startDate);
+            adjustedDate.setDate(startDate.getDate() + daysDiff);
+            return adjustedDate;
+        }
+
+
+        function removeDfrt(lst) {
+            return [...new Set(lst)];
+        }
+
+        async function findId(fileContent) {
+            const registeredCourses = [];
+            fileContent.split('\n').forEach(line => {
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "Registered"')) {
+                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
+                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
+                    const courseId = line.substring(startIdx, endIdx);
+                    registeredCourses.push(courseId);
+                }
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "W')) {
+                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
+                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
+                    const courseId = line.substring(startIdx, endIdx);
+                    registeredCourses.push(courseId);
+                }
+            });
+            console.log(registeredCourses);
+            return registeredCourses;
+        }
+
+        function combineCourseTime(str1, str2) {
+            return str1.slice(0, 8) + str2.slice(8);
+        }
+
+        function finalTimeExport(dateStr) {
+            if (dateStr === "null") {
+                return "null";
+            }
+            const parts = dateStr.split(",");
+            let year = parts[0];
+            let month = (parseInt(parts[1]) + 1).toString().padStart(2, '0');
+            let day = parts[2].padStart(2, '0');
+            let hour = parts[3].padStart(2, '0');
+            let minute = parseInt(parts[4]) - 10;
+            let second = parseInt(parts[5]);
+            if (minute < 0) {
+                hour = (parseInt(hour) - 1).toString().padStart(2, '0');
+                minute += 60;
+            }
+            minute = minute.toString().padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second.toString().padStart(2, '0')}`;
+        }
+
+        function dropDateExport(dateStr) {
+            if (dateStr === "null") {
+                return "null";
+            }
+            dateStr = dateStr.replace("(", "").replace(" - 1)", "");
+            const parts = dateStr.split(",");
+            const year = parts[0];
+            const month = parts[1].padStart(2, '0');
+            const day = parts[2].padStart(2, '0');
+            const hour = parts[3].padStart(2, '0');
+            const minute = parts[4].padStart(2, '0');
+            const second = parts[5].padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second}`;
+        }
+
+        function courseDateExport(dateStr) {
+            dateStr = dateStr.replace("(", "").replace(" - 1", "").replace(")", "");
+            const timeParts = dateStr.split(",");
+            const year = timeParts[0];
+            const month = timeParts[1].padStart(2, '0');
+            const day = timeParts[2].padStart(2, '0');
+            const hour = timeParts[3].padStart(2, '0');
+            const minute = timeParts[4].padStart(2, '0');
+            const second = timeParts[5].padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second}`;
+        }
+
+        function weekdaysExport(dateStr) {
+            return dateStr.replace("M", 'MO').replace("T", 'TU').replace("W", 'WE').replace("R", 'TH').replace("F", 'FR');
+        }
+
+        function findAllPositions(char, string) {
+            const positions = [];
+            let startIndex = 0;
+            while (true) {
+                const index = string.indexOf(char, startIndex);
+                if (index === -1) {
+                    break;
+                }
+                positions.push(index + char.length - 1);
+                startIndex = index + 1;
+            }
+            return positions;
+        }
+
+        function finalExamOutput(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                if (finalTime[number] === "null") {
+                    return;
+                }
+                const dtstart = `DTSTART;TZID=America/Los_Angeles:${finalTime[number]}\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${finalTime[number].slice(0, -1)}1\n`;
+                const summary = `SUMMARY:${courseName[number]} Final Exam\n`;
+                icsContent += header + dtstart + dtend + summary + footer;
+            });
+        }
+
+        function dropExport(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                if (dropTime[number] === "null") {
+                    return;
+                }
+                const dtstart = `DTSTART;TZID=America/Los_Angeles:${dropTime[number]}\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${dropTime[number].slice(0, -6)}235959\n`;
+                const summary = `SUMMARY:${courseName[number]} drop day\n`;
+                icsContent += header + dtstart + dtend + summary + "TRANSP:FREE\n" + footer;
+            });
+        }
+
+        function courseOutput(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                for (let tp = 0; tp < courseMeetingTime[number]; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    if (courseStarttime[meetingname] === "null") {
+                        continue;
+                    }
+                    if (courseWeekdays[meetingname] === "null") {
+                        continue;
+                    }
+                    const startday = new Date(courseStarttime[meetingname].slice(0, 4), courseStarttime[meetingname].slice(4, 6) - 1, courseStarttime[meetingname].slice(6, 8));
+                    const coursedays = sortWeekdays(weekdaysExport(courseWeekdays[meetingname]));
+                    const rightday = adjustToWeekday(startday, wkdynum[coursedays.slice(0, 2)]);
+                    console.log("right day: "+rightday)
+                    const dtstart = `DTSTART;TZID=America/Los_Angeles:${rightday.toISOString().slice(0, 10).replace(/-/g, '')}${courseStarttime[meetingname].slice(8)}\n`;
+                    const classover = combineCourseTime(rightday.toISOString().slice(0, 10).replace(/-/g, ''), courseEndtime[meetingname]);
+                    const dtend = `DTEND;TZID=America/Los_Angeles:${classover}\n`;
+                    const location = `LOCATION:${courseLocation[meetingname]}\n`;
+                    const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeekdays(weekdaysExport(courseWeekdays[meetingname]))}\n`;
+                    const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
+                    icsContent += header + dtstart + dtend + summary + location + rrule + footer;
+                }
+            });
+        }
+
+        function aToB(s, a, b) {
+            const startIndex = s.indexOf(a);
+            if (startIndex === -1) {
+                return ["null", -1];
+            }
+            const endIndex = s.indexOf(b, startIndex + a.length);
+            if (endIndex === -1) {
+                return ["null", -1];
+            }
+            const result = s.substring(startIndex + a.length, endIndex);
+            return [result, endIndex + 1];
+        }
+
+        async function findCoursesDetails(fileContent, numbers) {
+            numbers.forEach(number => {
+                const targetStr1 = `"ID":"${number}"`;
+                const targetStr2 = `CourseDetails.t${number}.REGISTRATION_STATUS = `;
+                const [linesInRange, tmp] = aToB(fileContent, targetStr1, targetStr2);
+                eachCourseInfo[number] = linesInRange;
+                let [a, tmp1] = aToB(eachCourseInfo[number], '"SUBJECT_CODE":"', '"');
+                let [b, tmp2] = aToB(eachCourseInfo[number], '"COURSE_NUMBER":"', '"');
+                let [c, tmp3] = aToB(eachCourseInfo[number], '"SECTION_NUMBER":"', '"');
+                courseName[number] = `${a} ${b} ${c}`;
+                [finalTime[number], tmp1] = aToB(eachCourseInfo[number], ',"FINAL_EXAM_STARTDATE":new Date(', ')');
+                finalTime[number] = finalTimeExport(finalTime[number]);
+                [dropTime[number], tmp2] = aToB(eachCourseInfo[number], ",\"DROP_DATE\":new Date(", ")\n");
+                dropTime[number] = dropDateExport(dropTime[number]);
+                [eachCourseInfo[number], tmp3] = aToB(eachCourseInfo[number], '"MEETINGS":[', '"REGISTRATION_STATUS":');
+                const posi = findAllPositions('"TYPE":"', eachCourseInfo[number]);
+                const meetingnum = posi.length;
+                courseMeetingTime[number] = meetingnum;
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseType[meetingname], tmp1] = aToB(eachCourseInfo[number].slice(posi[tp]), '"', '"');
+                }
+                const posi2 = findAllPositions('"LOCATION":"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseLocation[meetingname], tmp2] = aToB(eachCourseInfo[number].slice(posi2[tp]), '"', '"');
+                }
+                const posi3 = findAllPositions(',"WEEKDAYS":"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseWeekdays[meetingname], tmp3] = aToB(eachCourseInfo[number].slice(posi3[tp]), '"', '"');
+                    if (courseWeekdays[meetingname] === "") {
+                        courseWeekdays[meetingname] = "null";
+                    }
+                }
+                const posi4 = findAllPositions('"STARTTIME"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseStarttime[meetingname], tmp1] = aToB(eachCourseInfo[number].slice(posi4[tp]), 'te(', ',0)');
+                    if (tmp1 === -1) {
+                        courseStarttime[meetingname] = "null";
+                        continue;
+                    }
+                    courseStarttime[meetingname] = courseDateExport(courseStarttime[meetingname]);
+                }
+                const posi5 = findAllPositions('"ENDTIME"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseEndtime[meetingname], tmp2] = aToB(eachCourseInfo[number].slice(posi5[tp]), 'te(', ',0)');
+                    if (tmp2 === -1) {
+                        courseEndtime[meetingname] = "null";
+                        continue;
+                    }
+                    courseEndtime[meetingname] = courseDateExport(courseEndtime[meetingname]);
+                }
+            });
+        }
+
+        let icsContent = '';
+
+        async function icsExport(fileContent) {
+            const registeredId = await findId(fileContent);
+            const uniqueRegisteredId = removeDfrt(registeredId);
+
+            const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
+            const footer = "\nEND:VCALENDAR";
+
+            icsContent = header;
+            await findCoursesDetails(fileContent, uniqueRegisteredId);
+            courseOutput(uniqueRegisteredId);
+            finalExamOutput(uniqueRegisteredId);
+            dropExport(uniqueRegisteredId);
+            icsContent += footer;
+
+            document.getElementById('downloadBtn').disabled = false;
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const fileContent = await file.text();
+                await icsExport(fileContent);
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "schedule.ics");
+            document.body.appendChild(link);
+            link.click();
+        });
+    </script>
+</body>
+</html>
