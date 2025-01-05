@@ -83,6 +83,7 @@
 
         <label for="fileInput" class="btn">上传</label>
         <input type="file" id="fileInput">
+        <p id="uploadStatus" style="color: gray; display: none;">已上传</p>
 
         <label for="downloadBtn" class="btn" id="downloadLabel" disabled>下载</label>
         <button id="downloadBtn" class="btn" style="display: none;" disabled></button>
@@ -358,10 +359,7 @@
             icsContent += footer;
 
             document.getElementById('downloadBtn').disabled = false;
-<<<<<<< HEAD
             document.getElementById('downloadLabel').disabled = false; // 确保下载按钮标签也启用
-=======
->>>>>>> ba7547f9242ec8ba97ca4a66dbe8020e59fb5526
         }
 
         document.getElementById('fileInput').addEventListener('change', async (event) => {
