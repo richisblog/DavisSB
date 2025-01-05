@@ -74,9 +74,31 @@
         label:hover {
             background-color: #8c661f;
         }
+        .navbar {
+            background-color: #0a369d; /* 深蓝色背景 */
+            padding: 10px;
+            text-align: center;
+        }
+        .navbar a {
+            display: inline-block;
+            margin: 0 15px;
+            background-color: transparent; /* 白色文字 */
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .navbar a:hover {
+            background-color: #b78727; /* 鼠标悬停时的背景色 */
+        }
     </style>
 </head>
 <body>
+    <div class="navbar">
+        <a href="https://richisblog.github.io/DavisSB/" target="_blank">课表导出</a>
+        <a href="mailto:rzjin@ucdavis.edu">联系我</a>
+    </div>
     <div class="container">
         <h1>Schedule Builder日历导出</h1>
         <p>上传 Schedule Builder.html :</p>
