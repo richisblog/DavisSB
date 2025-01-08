@@ -37,6 +37,10 @@
             background-color: #ccc;
             cursor: not-allowed;
         }
+        #downloadBtn:not(:disabled) {
+            background-color: #b78727;
+            cursor: pointer;
+        }
         #output {
             margin-top: 20px;
             padding: 10px 20px;
@@ -400,8 +404,11 @@
                 }
                 const fileContent = await file.text();
                 await icsExport(fileContent);
-                // 修改: 将上传按钮文本改为“已上传”
                 document.querySelector('label[for="fileInput"]').textContent = '上传成功';
+                // 启用下载按钮
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadLabel').disabled = false;
+                document.getElementById('downloadBtn').style.backgroundColor = '#b78727';
             }
         });
 
@@ -422,12 +429,18 @@
             if (file) {
                 if (file.size <= 15000) {
                     alert('错误，请检查操作是否正确');
+                    window.location.reload();
                     document.getElementById('downloadBtn').disabled = true;
                     document.getElementById('downloadLabel').disabled = true;
                     return;
                 }
                 const fileContent = await file.text();
                 await icsExport(fileContent);
+                document.querySelector('label[for="fileInput"]').textContent = '上传成功';
+                // 启用下载按钮
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadLabel').disabled = false;
+                document.getElementById('downloadBtn').style.backgroundColor = '#b78727';
             }
         });
 
@@ -437,6 +450,7 @@
             const url = URL.createObjectURL(blob);
             if (blob.size <= 300) {
                 alert('错误，请检查操作是否正确');
+                window.location.reload();
                 return;
                 URL.revokeObjectURL(url);
                 document.body.removeChild(link);
