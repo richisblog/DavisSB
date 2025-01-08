@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule Export</title>
+    <title>Richis' Schedule Export</title>
     <META HTTP-EQUIV="pragma" CONTENT="no-cache"> 
     <style>
         body {
@@ -56,7 +56,7 @@
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             text-align: center;
-            margin-top: 40px; /* 增加顶部间距 */
+            margin-top: 40px; /* 顶部间距 */
             margin-bottom: 40px;
         }
         .icon {
@@ -399,6 +399,7 @@
             if (file) {
                 if (file.size <= 15000) {
                     alert('错误，请检查操作是否正确');
+                    window.location.reload();
                     document.getElementById('downloadBtn').disabled = true;
                     document.getElementById('downloadLabel').disabled = true;
                     return;
@@ -452,11 +453,12 @@
             if (blob.size <= 300) {
                 alert('错误，请检查操作是否正确');
                 window.location.reload();
-                return;
+                
                 URL.revokeObjectURL(url);
                 document.body.removeChild(link);
                 document.getElementById('downloadBtn').disabled = true;
                 document.getElementById('downloadLabel').disabled = true; // 确保下载按钮标签也禁用
+                return;
             }
             link.setAttribute("href", url);
             link.setAttribute("download", "schedule.ics");
