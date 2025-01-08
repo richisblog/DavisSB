@@ -398,8 +398,9 @@
             const file = event.target.files[0];
             if (file) {
                 if (file.size <= 15000) {
-                    alert('错误，请检查操作是否正确');
                     window.location.reload();
+                    alert('错误，请检查操作是否正确');
+                    
                     document.getElementById('downloadBtn').disabled = true;
                     document.getElementById('downloadLabel').disabled = true;
                     return;
