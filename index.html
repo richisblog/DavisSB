@@ -400,6 +400,8 @@
                 }
                 const fileContent = await file.text();
                 await icsExport(fileContent);
+                // 修改: 将上传按钮文本改为“已上传”
+                document.querySelector('label[for="fileInput"]').textContent = '上传成功';
             }
         });
 
@@ -452,8 +454,9 @@
     <h2>还想要哪些功能？ <a href="mailto:rzjin@ucdavis.edu">联系我</a></h2>
     <!-- 这里可以添加具体的Q&A内容 -->
     <p>更新日志：</p>
-    <p>2025-01-06: 修复了部分课程时间错误的问题</p>
+    <p>2025-01-07: 添加上传成功提示</p>
     <p>2025-01-07: 添加英文辅助按钮（跳转Google翻译网页）</p>
+    <p>2025-01-06: 修复了部分课程时间错误的问题</p>
 </div>
 <div class="container" style="text-align: left; margin-top: 20px;">
     <h2>使用教程</h2>
