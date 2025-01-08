@@ -282,6 +282,8 @@
             numbers.forEach(number => {
                 for (let tp = 0; tp < courseMeetingTime[number]; tp++) {
                     const meetingname = `${number}${tp}`;
+                    const rem = 
+            
                     if (courseStarttime[meetingname] === "null") {
                         continue;
                     }
@@ -298,7 +300,8 @@
                     const location = `LOCATION:${courseLocation[meetingname]}\n`;
                     const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeekdays(weekdaysExport(courseWeekdays[meetingname]))}\n`;
                     const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
-                    icsContent += header + dtstart + dtend + summary + location + rrule + footer;
+                    rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary} starts in 30 minutes\nEND:VALARM\n`
+                    icsContent += header + dtstart + dtend + summary + location + rrule + rem + footer;
                 }
             });
         }
