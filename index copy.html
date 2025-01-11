@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Richis' Schedule Export</title>
+    <META HTTP-EQUIV="pragma" CONTENT="no-cache"> 
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #fff;
+            color: #0a369d;
+        }
+        h1 {
+            color: #0a369d;
+        }
+        p {
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            margin-bottom: 10px;
+            background-color: #b78727;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            text-align: center;
+            width: 150px;
+        }
+        .btn:hover {
+            background-color: #8c661f;
+        }
+        #downloadBtn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #downloadBtn:not(:disabled) {
+            background-color: #b78727;
+            cursor: pointer;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #fff;
+            border-radius: 8px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-top: 40px; /* 顶部间距 */
+            margin-bottom: 40px;
+        }
+        .icon {
+            margin-right: 5px;
+        }
+        input[type="file"] {
+            opacity: 0;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            z-index: -1;
+        }
+        label {
+            display: inline-block;
+            background-color: #b78727;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        label:hover {
+            background-color: #8c661f;
+        }
+        .navbar {
+            background-color: #0a369d; /* 深蓝色背景 */
+            padding: 10px;
+            text-align: center;
+        }
+        .navbar a {
+            display: inline-block;
+            margin: 0 15px;
+            background-color: transparent;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .navbar a:hover {
+            background-color: #b78727;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="http://ucdsb.richis.top" target="_blank">课表导出</a>
+        <a href="mailto:rzjin@ucdavis.edu">联系我</a>
+        <a href="https://ucdsb-richis-top.translate.goog/?_x_tr_sch=http&_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en-US&_x_tr_pto=wapp">English Version</a>
+    </div>
+    
+    <div class="container">
+        <h1>Schedule Builder日历导出</h1>
+        <p>上传 Schedule Builder.html :</p>
+
+        <label for="fileInput" class="btn">上传</label>
+        <input type="file" id="fileInput">
+        <p id="uploadStatus" style="color: gray; display: none;">已上传</p>
+
+        <label for="downloadBtn" class="btn" id="downloadLabel" disabled>下载</label>
+        <button id="downloadBtn" class="btn" style="display: none;" disabled></button>
+        <p style="color: gray; font-size: 12px;">该工具不能保证完美适配每个人的课表，请自行检查课程时间地点。如有异常，请<a href="mailto:rzjin@ucdavis.edu">联系我</a>。</p>
+    </div>
+    <script>
+        const weekdy = {"M":"MO","T":"TU","W":"WE","R":"TH","F":"FR"};
+        const wkdynum = {"MO":1,"TU":2,"WE":3,"TH":4,"FR":5};
+
+        const eachCourseInfo = {};
+        const courseName = {};
+        const finalTime = {};
+        const dropTime = {};
+        const courseType = {};
+        const courseLocation = {};
+        const courseWeekdays = {};
+        const courseStarttime = {};
+        const courseEndtime = {};
+        const courseMeetingTime = {};
+
+        function sortWeek(weekdaysStr) {//给星期几排序，其实应该没用但是以防万一？
+            const weekOrder = ["MO", "TU", "WE", "TH", "FR"];
+            const weekList = weekdaysStr.split(',');
+            const sortedWeek = weekList.sort((a, b) => weekOrder.indexOf(a) - weekOrder.indexOf(b));
+            return sortedWeek.join(',');
+        }
+
+        function adjustToWeekday(startDate, targetWeekday) {//解决第一周由于开学日期和课程开学日期不同导致的错误
+            let startWeekday = startDate.getDay();
+            //console.log(startWeekday)
+            if (startWeekday === targetWeekday) {
+                return startDate;
+            }
+            let daysDiff = (targetWeekday - startWeekday  + 7) % 7;
+            let adjustedDate = new Date(startDate);
+            adjustedDate.setDate(startDate.getDate() + daysDiff);
+            return adjustedDate;
+        }
+
+
+        function removeDfrt(lst) {//去重复，简单粗暴
+            return [...new Set(lst)];
+        }
+
+        async function findId(fileContent) {//匹配CRN，当然不一定是CRN。098F为字符串。第一个学期的测试数据就把我卡了……
+            const registeredCourses = [];
+            fileContent.split('\n').forEach(line => {
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "Registered"')) {//抓取 已注册 id
+                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
+                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
+                    const courseId = line.substring(startIdx, endIdx);
+                    registeredCourses.push(courseId);
+                }
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "W')) {//抓取 wl id
+                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
+                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
+                    const courseId = line.substring(startIdx, endIdx);
+                    registeredCourses.push(courseId);
+                }
+            });
+            //console.log(registeredCourses);
+            return registeredCourses;
+        }
+
+        function combineCourseTime(str1, str2) { 
+            // 组合时间使用，干什么用的呢？
+            //是因为课程的开始时间是开课的第一天的上课时间，而下课时间是最后一天的下课时间。
+            // 所以把时分秒摘出来和上课的年月日组合
+            return str1.slice(0, 8) + str2.slice(8);
+        }
+
+        function finalTimeExport(dateStr) {// 输出期末考试时间
+            if (dateStr === "null") {
+                return "null";
+            }
+            const parts = dateStr.split(",");
+            let year = parts[0];
+            let month = (parseInt(parts[1]) + 1).toString().padStart(2, '0');
+            let day = parts[2].padStart(2, '0');
+            let hour = parts[3].padStart(2, '0');
+            let minute = parseInt(parts[4]) - 10;
+            let second = parseInt(parts[5]);
+            if (minute < 0) {
+                hour = (parseInt(hour) - 1).toString().padStart(2, '0');
+                minute += 60;
+            }
+            minute = minute.toString().padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second.toString().padStart(2, '0')}`;
+        }
+
+        function dropDateExport(dateStr) {
+            if (dateStr === "null") {
+                return "null";
+            }
+            dateStr = dateStr.replace("(", "").replace(" - 1)", "");
+            const parts = dateStr.split(",");
+            const year = parts[0];
+            const month = parts[1].padStart(2, '0');
+            const day = parts[2].padStart(2, '0');
+            const hour = parts[3].padStart(2, '0');
+            const minute = parts[4].padStart(2, '0');
+            const second = parts[5].padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second}`;
+        }
+
+        function courseDateExport(dateStr) {
+            dateStr = dateStr.replace("(", "").replace(" - 1", "").replace(")", "");
+            const timeParts = dateStr.split(",");
+            const year = timeParts[0];
+            const month = timeParts[1].padStart(2, '0');
+            const day = timeParts[2].padStart(2, '0');
+            const hour = timeParts[3].padStart(2, '0');
+            const minute = timeParts[4].padStart(2, '0');
+            const second = timeParts[5].padStart(2, '0');
+            return `${year}${month}${day}T${hour}${minute}${second}`;
+        }
+
+        function weekdaysExport(dateStr) {
+            return dateStr.replace("M", 'MO').replace("T", 'TU').replace("W", 'WE').replace("R", 'TH').replace("F", 'FR');
+        }
+
+        function findAllPositions(char, string) {
+            const positions = [];
+            let startIndex = 0;
+            while (true) {
+                const index = string.indexOf(char, startIndex);
+                if (index === -1) {
+                    break;
+                }
+                positions.push(index + char.length - 1);
+                startIndex = index + 1;
+            }
+            return positions;
+        }
+
+        function finalExamOutput(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                if (finalTime[number] === "null") {
+                    return;
+                }
+                const dtstart = `DTSTART;TZID=America/Los_Angeles:${finalTime[number]}\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${finalTime[number].slice(0, -1)}1\n`;
+                const summary = `SUMMARY:${courseName[number]} Final Exam\n`;
+                icsContent += header + dtstart + dtend + summary + footer;
+            });
+        }
+
+        function dropExport(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                if (dropTime[number] === "null") {
+                    return;
+                }
+                const dtstart = `DTSTART;TZID=America/Los_Angeles:${dropTime[number]}\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${dropTime[number].slice(0, -6)}235959\n`;
+                const summary = `SUMMARY:${courseName[number]} drop day\n`;
+                icsContent += header + dtstart + dtend + summary + "TRANSP:FREE\n" + footer;
+            });
+        }
+
+        function courseOutput(numbers) {
+            const header = "BEGIN:VEVENT\n";
+            const footer = "END:VEVENT\n\n";
+            numbers.forEach(number => {
+                for (let tp = 0; tp < courseMeetingTime[number]; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    if (courseStarttime[meetingname] === "null") {
+                        continue;
+                    }
+                    if (courseWeekdays[meetingname] === "null") {
+                        continue;
+                    }
+                    const startday = new Date(courseStarttime[meetingname].slice(0, 4), courseStarttime[meetingname].slice(4, 6) - 1, courseStarttime[meetingname].slice(6, 8));
+                    const coursedays = sortWeekdays(weekdaysExport(courseWeekdays[meetingname]));
+                    const rightday = adjustToWeekday(startday, wkdynum[coursedays.slice(0, 2)]);
+                    console.log("right day: "+rightday)
+                    const dtstart = `DTSTART;TZID=America/Los_Angeles:${rightday.toISOString().slice(0, 10).replace(/-/g, '')}${courseStarttime[meetingname].slice(8)}\n`;
+                    const classover = combineCourseTime(rightday.toISOString().slice(0, 10).replace(/-/g, ''), courseEndtime[meetingname]);
+                    const dtend = `DTEND;TZID=America/Los_Angeles:${classover}\n`;
+                    const location = `LOCATION:${courseLocation[meetingname]}\n`;
+                    const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeekdays(weekdaysExport(courseWeekdays[meetingname]))}\n`;
+                    const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
+                    rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary} starts in 30 minutes\nEND:VALARM\n`
+                    icsContent += header + dtstart + dtend + summary + location + rrule + rem + footer;
+                }
+            });
+        }
+
+        function aToB(s, a, b) {
+            const startIndex = s.indexOf(a);
+            if (startIndex === -1) {
+                return ["null", -1];
+            }
+            const endIndex = s.indexOf(b, startIndex + a.length);
+            if (endIndex === -1) {
+                return ["null", -1];
+            }
+            const result = s.substring(startIndex + a.length, endIndex);
+            return [result, endIndex + 1];
+        }
+
+        async function findCoursesDetails(fileContent, numbers) {
+            numbers.forEach(number => {
+                const targetStr1 = `"ID":"${number}"`;
+                const targetStr2 = `CourseDetails.t${number}.REGISTRATION_STATUS = `;
+                const [linesInRange, tmp] = aToB(fileContent, targetStr1, targetStr2);
+                eachCourseInfo[number] = linesInRange;
+                let [a, tmp1] = aToB(eachCourseInfo[number], '"SUBJECT_CODE":"', '"');
+                let [b, tmp2] = aToB(eachCourseInfo[number], '"COURSE_NUMBER":"', '"');
+                let [c, tmp3] = aToB(eachCourseInfo[number], '"SECTION_NUMBER":"', '"');
+                courseName[number] = `${a} ${b} ${c}`;
+                [finalTime[number], tmp1] = aToB(eachCourseInfo[number], ',"FINAL_EXAM_STARTDATE":new Date(', ')');
+                finalTime[number] = finalTimeExport(finalTime[number]);
+                [dropTime[number], tmp2] = aToB(eachCourseInfo[number], ",\"DROP_DATE\":new Date(", ")\n");
+                dropTime[number] = dropDateExport(dropTime[number]);
+                [eachCourseInfo[number], tmp3] = aToB(eachCourseInfo[number], '"MEETINGS":[', '"REGISTRATION_STATUS":');
+                const posi = findAllPositions('"TYPE":"', eachCourseInfo[number]);
+                const meetingnum = posi.length;
+                courseMeetingTime[number] = meetingnum;
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseType[meetingname], tmp1] = aToB(eachCourseInfo[number].slice(posi[tp]), '"', '"');
+                }
+                const posi2 = findAllPositions('"LOCATION":"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseLocation[meetingname], tmp2] = aToB(eachCourseInfo[number].slice(posi2[tp]), '"', '"');
+                }
+                const posi3 = findAllPositions(',"WEEKDAYS":"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseWeekdays[meetingname], tmp3] = aToB(eachCourseInfo[number].slice(posi3[tp]), '"', '"');
+                    if (courseWeekdays[meetingname] === "") {
+                        courseWeekdays[meetingname] = "null";
+                    }
+                }
+                const posi4 = findAllPositions('"STARTTIME"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseStarttime[meetingname], tmp1] = aToB(eachCourseInfo[number].slice(posi4[tp]), 'te(', ',0)');
+                    if (tmp1 === -1) {
+                        courseStarttime[meetingname] = "null";
+                        continue;
+                    }
+                    courseStarttime[meetingname] = courseDateExport(courseStarttime[meetingname]);
+                }
+                const posi5 = findAllPositions('"ENDTIME"', eachCourseInfo[number]);
+                for (let tp = 0; tp < meetingnum; tp++) {
+                    const meetingname = `${number}${tp}`;
+                    [courseEndtime[meetingname], tmp2] = aToB(eachCourseInfo[number].slice(posi5[tp]), 'te(', ',0)');
+                    if (tmp2 === -1) {
+                        courseEndtime[meetingname] = "null";
+                        continue;
+                    }
+                    courseEndtime[meetingname] = courseDateExport(courseEndtime[meetingname]);
+                }
+            });
+        }
+
+        let icsContent = '';
+
+        async function icsExport(fileContent) {
+            const registeredId = await findId(fileContent);
+            const uniqueRegisteredId = removeDfrt(registeredId);
+
+            const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
+            const footer = "\nEND:VCALENDAR";
+
+            icsContent = header;
+            await findCoursesDetails(fileContent, uniqueRegisteredId);
+            courseOutput(uniqueRegisteredId);
+            finalExamOutput(uniqueRegisteredId);
+            dropExport(uniqueRegisteredId);
+            icsContent += footer;
+
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('downloadLabel').disabled = false; // 确保下载按钮标签也启用
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size <= 15000) {
+                    window.location.reload();
+                    alert('错误，请检查操作是否正确');
+                    
+                    document.getElementById('downloadBtn').disabled = true;
+                    document.getElementById('downloadLabel').disabled = true;
+                    return;
+                }
+                const fileContent = await file.text();
+                await icsExport(fileContent);
+                document.querySelector('label[for="fileInput"]').textContent = '上传成功';
+                // 启用下载按钮
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadLabel').disabled = false;
+                document.getElementById('downloadBtn').style.backgroundColor = '#b78727';
+            }
+        });
+
+        // 添加拖放事件监听器
+        document.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            document.body.style.backgroundColor = '#f0f0f0';
+        });
+
+        document.addEventListener('dragleave', (event) => {
+            document.body.style.backgroundColor = '#fff';
+        });
+
+        document.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            document.body.style.backgroundColor = '#fff';
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                if (file.size <= 15000) {
+                    alert('错误，请检查操作是否正确');
+                    window.location.reload();
+                    document.getElementById('downloadBtn').disabled = true;
+                    document.getElementById('downloadLabel').disabled = true;
+                    return;
+                }
+                const fileContent = await file.text();
+                await icsExport(fileContent);
+                document.querySelector('label[for="fileInput"]').textContent = '上传成功';
+                // 启用下载按钮
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadLabel').disabled = false;
+                document.getElementById('downloadBtn').style.backgroundColor = '#b78727';
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            if (blob.size <= 300) {
+                alert('错误，请检查操作是否正确');
+                window.location.reload();
+                
+                URL.revokeObjectURL(url);
+                document.body.removeChild(link);
+                document.getElementById('downloadBtn').disabled = true;
+                document.getElementById('downloadLabel').disabled = true; // 确保下载按钮标签也禁用
+                return;
+            }
+            link.setAttribute("href", url);
+            link.setAttribute("download", "schedule.ics");
+            document.body.appendChild(link);
+            link.click();
+
+        });
+    </script>
+<div class="container" style="text-align: left; margin-top: 20px;">
+    <h2>还想要哪些功能？ <a href="mailto:rzjin@ucdavis.edu">联系我</a></h2>
+    <!-- 这里可以添加具体的Q&A内容 -->
+    <p>更新日志：</p>
+    <p>2025-01-07: 添加上传成功提示</p>
+    <p>2025-01-07: 添加英文辅助按钮（跳转Google翻译网页）</p>
+    <p>2025-01-06: 修复了部分课程时间错误的问题</p>
+</div>
+<div class="container" style="text-align: left; margin-top: 20px;">
+    <h2>使用教程</h2>
+    <p>I.   打开<a href="https://my.ucdavis.edu/schedulebuilder/" target="_blank">Schedule Builder</a>并登录到选课页面。</p>
+    <p>II.  按下command+s或ctrl+s保存页面html。</p>
+    <p>III. 点击“上传”按钮，选择您的 Schedule Builder.html 文件</p>
+    <p>IV.  点击“下载”按钮，下载生成的ICS文件</p>
+    <p>V.   导入ICS文件到您的日历应用</p>
+</div>
+<div class="container" style="text-align: left; margin-top: 20px;">
+    <h2>Q&A</h2>
+    <!-- 这里可以添加具体的Q&A内容 -->
+    <p>Q: 为什么我上传的文件没有反应？</p>
+    <p>A: 请确保您上传的文件是从Schedule Builder保存的html文件</p>
+    <p>Q: 为什么我下载的文件无法导入日历？</p>
+    <p>A: iPhone用户务必使用Safari浏览器下载html和ICS，其他浏览器可能无法下载ICS文件。</p>
+    <p>A: 请确保您的日历应用支持ICS文件导入，推荐使用iPhone或Mac，安卓和Windows用户请参考<a href="https://support.google.com/calendar/answer/37118?hl=en&co=GENIE.Platform%3DDesktop&oco=1" target="_blank">Google官方文档</a></p>
+    <p>Q: 为什么我导入的日历有错误？</p>
+    <p>A: 该工具不能保证完美适配每个人的课表，请自行检查课程时间地点。如有异常，请<a href="mailto:rzjin@ucdavis.edu">联系我</a>。</p>
+
+</div>
+<div class="container" style="text-align: center; margin-top: 20px;">
+    <a href="https://www.xiaohongshu.com/user/profile/5d3c1440000000001200a9e3" target="_blank">
+        <img src="xhscode.png" alt="小红书二维码" style="border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); width: 200px;">
+    </a>
+    <p style="margin-top: 10px;">欢迎关注我的小红书</p>
+</div>
+<!-- Default Statcounter code for UCDavisSB
+http://ucdsb.richis.top -->
+<script type="text/javascript">
+    var sc_project=13074702; 
+    var sc_invisible=1; 
+    var sc_security="a34c6e49"; 
+    </script>
+    <script type="text/javascript"
+    src="https://www.statcounter.com/counter/counter.js"
+    async></script>
+    <noscript><div class="statcounter"><a title="Web Analytics"
+    href="https://statcounter.com/" target="_blank"><img
+    class="statcounter"
+    src="https://c.statcounter.com/13074702/0/a34c6e49/1/"
+    alt="Web Analytics"
+    referrerPolicy="no-referrer-when-downgrade"></a></div></noscript>
+    <!-- End of Statcounter Code -->
+</body>
+</html>
