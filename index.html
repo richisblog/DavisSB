@@ -127,6 +127,7 @@
         const eachCourseInfo = {};
         const courseName = {};
         const finalTime = {};
+        const finalend = {};
         const dropTime = {};
         const courseType = {};
         const courseLocation = {};
@@ -135,82 +136,80 @@
         const courseEndtime = {};
         const courseMeetingTime = {};
 
-        function sortWeekdays(weekdaysStr) {
-            const weekdayOrder = ["MO", "TU", "WE", "TH", "FR"];
-            const weekdaysList = weekdaysStr.split(',');
-            const sortedWeekdays = weekdaysList.sort((a, b) => weekdayOrder.indexOf(a) - weekdayOrder.indexOf(b));
-            return sortedWeekdays.join(',');
+        function sortWeek(weekdaysStr) {//给星期几排序，其实应该没用但是以防万一？
+            const weekOrder = ["MO", "TU", "WE", "TH", "FR"];
+            const weekList = weekdaysStr.split(',');
+            const sortedWeek = weekList.sort((a, b) => weekOrder.indexOf(a) - weekOrder.indexOf(b));
+            return sortedWeek.join(',');
         }
 
         function adjustToWeekday(startDate, targetWeekday) {
+            //解决第一周由于开学日期和课程开学日期不同导致的错误
             let startWeekday = startDate.getDay();
-            console.log(startWeekday)
             if (startWeekday === targetWeekday) {
                 return startDate;
             }
-
             let daysDiff = (targetWeekday - startWeekday  + 7) % 7;
             let adjustedDate = new Date(startDate);
             adjustedDate.setDate(startDate.getDate() + daysDiff);
             return adjustedDate;
         }
 
-
-        function removeDfrt(lst) {
+        function removeDfrt(lst) {//去重复，简单粗暴
             return [...new Set(lst)];
         }
 
-        async function findId(fileContent) {
+        function findId(fileContent) {//匹配CRN，当然不一定是CRN。098F为字符串。第一个学期的测试数据就把我卡了……
             const registeredCourses = [];
             fileContent.split('\n').forEach(line => {
-                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "Registered"')) {
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "Registered"')) {//抓取 已注册 id
                     const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
                     const endIdx = line.indexOf('.REGISTRATION_STATUS');
                     const courseId = line.substring(startIdx, endIdx);
                     registeredCourses.push(courseId);
                 }
-                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "W')) {
+                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "W')) {//抓取 wl id
                     const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
                     const endIdx = line.indexOf('.REGISTRATION_STATUS');
                     const courseId = line.substring(startIdx, endIdx);
                     registeredCourses.push(courseId);
                 }
             });
-            console.log(registeredCourses);
             return registeredCourses;
         }
 
-        function combineCourseTime(str1, str2) {
-            return str1.slice(0, 8) + str2.slice(8);
+        function combineCourseTime(stt, endd) { 
+            // 组合时间使用，干什么用的?
+            // 是因为课程的开始时间是开课的第一天的上课时间，而下课时间是最后一天的下课时间。
+            // 所以把时分秒摘出来和上课的年月日组合
+            return stt.slice(0, 8) + endd.slice(8);
         }
 
-        function finalTimeExport(dateStr) {
+        function finalTimeExport(dateStr) {//输出期末考试时间 new Date(2025,2,19,15,30,0)（2025年，3月，19日，15:30:00）
             if (dateStr === "null") {
-                return "null";
+                return ["null","null"];
             }
             const parts = dateStr.split(",");
             let year = parts[0];
-            let month = (parseInt(parts[1]) + 1).toString().padStart(2, '0');
+            let month = (parseInt(parts[1]) + 1).toString().padStart(2, '0');//注意期末的月份是0-11，所以要加1
             let day = parts[2].padStart(2, '0');
             let hour = parts[3].padStart(2, '0');
-            let minute = parseInt(parts[4]) - 10;
-            let second = parseInt(parts[5]);
-            if (minute < 0) {
-                hour = (parseInt(hour) - 1).toString().padStart(2, '0');
-                minute += 60;
-            }
-            minute = minute.toString().padStart(2, '0');
-            return `${year}${month}${day}T${hour}${minute}${second.toString().padStart(2, '0')}`;
+            let endhour = parseInt(parts[3])+2;
+            let minute = parts[4].padStart(2, '0');
+            let second = parts[5].padStart(2, '0');
+            timestart=`${year}${month}${day}T${hour.padStart(2,'0')}${minute}${second}`
+            timeend = `${year}${month}${day}T${endhour.toString().padStart(2,'0')}${minute}${second}`
+            return [timestart, timeend];
         }
 
-        function dropDateExport(dateStr) {
+        function dropDateExport(dateStr) {//输出退课日期，new Date(2025,(2 - 1),3,0,0,0)，（2025年，2月，3日，0时，0分，0秒，0毫秒）
             if (dateStr === "null") {
                 return "null";
             }
             dateStr = dateStr.replace("(", "").replace(" - 1)", "");
             const parts = dateStr.split(",");
             const year = parts[0];
-            const month = parts[1].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');//月份正常
             const day = parts[2].padStart(2, '0');
             const hour = parts[3].padStart(2, '0');
             const minute = parts[4].padStart(2, '0');
@@ -218,7 +217,7 @@
             return `${year}${month}${day}T${hour}${minute}${second}`;
         }
 
-        function courseDateExport(dateStr) {
+        function courseDateExport(dateStr) {//抓取到课程时间，形如new Date(2025,1 - 1,6,15,10,0,0)（2025年，1月，6日，15时，10分，0秒，0毫秒）
             dateStr = dateStr.replace("(", "").replace(" - 1", "").replace(")", "");
             const timeParts = dateStr.split(",");
             const year = timeParts[0];
@@ -230,7 +229,7 @@
             return `${year}${month}${day}T${hour}${minute}${second}`;
         }
 
-        function weekdaysExport(dateStr) {
+        function weekdaysExport(dateStr) {//课程信息里用的一个字母代表星期信息，ics文件语法用两个字母代表星期，进行转换
             return dateStr.replace("M", 'MO').replace("T", 'TU').replace("W", 'WE').replace("R", 'TH').replace("F", 'FR');
         }
 
@@ -248,21 +247,22 @@
             return positions;
         }
 
-        function finalExamOutput(numbers) {
+        function finalExamOutput(numbers) {//输出期末考试时间，后确定期末考试时间统一为2小时，遂修改
             const header = "BEGIN:VEVENT\n";
             const footer = "END:VEVENT\n\n";
             numbers.forEach(number => {
                 if (finalTime[number] === "null") {
                     return;
-                }
+                }//部分课程没有期末，不输出
                 const dtstart = `DTSTART;TZID=America/Los_Angeles:${finalTime[number]}\n`;
-                const dtend = `DTEND;TZID=America/Los_Angeles:${finalTime[number].slice(0, -1)}1\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${finalend[number]}\n`;
                 const summary = `SUMMARY:${courseName[number]} Final Exam\n`;
                 icsContent += header + dtstart + dtend + summary + footer;
             });
         }
 
-        function dropExport(numbers) {
+        function dropExport(numbers) {//设置的是一整天，不太好看，怎么整理好呢？？TODO
+            //todo
             const header = "BEGIN:VEVENT\n";
             const footer = "END:VEVENT\n\n";
             numbers.forEach(number => {
@@ -289,14 +289,14 @@
                         continue;
                     }
                     const startday = new Date(courseStarttime[meetingname].slice(0, 4), courseStarttime[meetingname].slice(4, 6) - 1, courseStarttime[meetingname].slice(6, 8));
-                    const coursedays = sortWeekdays(weekdaysExport(courseWeekdays[meetingname]));
+                    const coursedays = sortWeek(weekdaysExport(courseWeekdays[meetingname]));
                     const rightday = adjustToWeekday(startday, wkdynum[coursedays.slice(0, 2)]);
                     console.log("right day: "+rightday)
                     const dtstart = `DTSTART;TZID=America/Los_Angeles:${rightday.toISOString().slice(0, 10).replace(/-/g, '')}${courseStarttime[meetingname].slice(8)}\n`;
                     const classover = combineCourseTime(rightday.toISOString().slice(0, 10).replace(/-/g, ''), courseEndtime[meetingname]);
                     const dtend = `DTEND;TZID=America/Los_Angeles:${classover}\n`;
                     const location = `LOCATION:${courseLocation[meetingname]}\n`;
-                    const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeekdays(weekdaysExport(courseWeekdays[meetingname]))}\n`;
+                    const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeek(weekdaysExport(courseWeekdays[meetingname]))}\n`;
                     const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
                     rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary}END:VALARM\n`
                     icsContent += header + dtstart + dtend + summary + location + rrule + rem + footer;
@@ -328,7 +328,7 @@
                 let [c, tmp3] = aToB(eachCourseInfo[number], '"SECTION_NUMBER":"', '"');
                 courseName[number] = `${a} ${b} ${c}`;
                 [finalTime[number], tmp1] = aToB(eachCourseInfo[number], ',"FINAL_EXAM_STARTDATE":new Date(', ')');
-                finalTime[number] = finalTimeExport(finalTime[number]);
+                [finalTime[number],finalend[number]] = finalTimeExport(finalTime[number]);
                 [dropTime[number], tmp2] = aToB(eachCourseInfo[number], ",\"DROP_DATE\":new Date(", ")\n");
                 dropTime[number] = dropDateExport(dropTime[number]);
                 [eachCourseInfo[number], tmp3] = aToB(eachCourseInfo[number], '"MEETINGS":[', '"REGISTRATION_STATUS":');

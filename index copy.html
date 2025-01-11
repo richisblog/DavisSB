@@ -159,25 +159,7 @@
             return [...new Set(lst)];
         }
 
-        async function findId(fileContent) {//匹配CRN，当然不一定是CRN。098F为字符串。第一个学期的测试数据就把我卡了……
-            const registeredCourses = [];
-            fileContent.split('\n').forEach(line => {
-                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "Registered"')) {//抓取 已注册 id
-                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
-                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
-                    const courseId = line.substring(startIdx, endIdx);
-                    registeredCourses.push(courseId);
-                }
-                if (line.includes('CourseDetails.t') && line.includes('.REGISTRATION_STATUS = "W')) {//抓取 wl id
-                    const startIdx = line.indexOf('CourseDetails.t') + 'CourseDetails.t'.length;
-                    const endIdx = line.indexOf('.REGISTRATION_STATUS');
-                    const courseId = line.substring(startIdx, endIdx);
-                    registeredCourses.push(courseId);
-                }
-            });
-            //console.log(registeredCourses);
-            return registeredCourses;
-        }
+        
 
         function combineCourseTime(str1, str2) { 
             // 组合时间使用，干什么用的呢？
