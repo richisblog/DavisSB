@@ -298,7 +298,7 @@
                     const location = `LOCATION:${courseLocation[meetingname]}\n`;
                     const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeekdays(weekdaysExport(courseWeekdays[meetingname]))}\n`;
                     const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
-                    rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary} starts in 30 minutes\nEND:VALARM\n`
+                    rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary}END:VALARM\n`
                     icsContent += header + dtstart + dtend + summary + location + rrule + rem + footer;
                 }
             });
