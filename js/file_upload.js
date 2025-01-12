@@ -20,7 +20,7 @@ export function handleFileUpload(fileInputId, callback) {
             fileInput.value = ''; // 清空文件输入框
             return;
         }
-
+        
         // 检查文件大小（可选）
         if (file.size > 5 * 1024 * 1024) { // 限制文件大小为 5MB
             alert('文件过大，大小不能超过 5MB！');
