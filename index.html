@@ -1,106 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Richis' Schedule Export</title>
     <META HTTP-EQUIV="pragma" CONTENT="no-cache"> 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #fff;
-            color: #0a369d;
-        }
-        h1 {
-            color: #0a369d;
-        }
-        p {
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            margin-bottom: 10px;
-            background-color: #b78727;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-            text-align: center;
-            width: 150px;
-        }
-        .btn:hover {
-            background-color: #8c661f;
-        }
-        #downloadBtn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        #downloadBtn:not(:disabled) {
-            background-color: #b78727;
-            cursor: pointer;
-        }
-        #output {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #fff;
-            border-radius: 8px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 10px 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            margin-top: 40px; /* 顶部间距 */
-            margin-bottom: 40px;
-        }
-        .icon {
-            margin-right: 5px;
-        }
-        input[type="file"] {
-            opacity: 0;
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            z-index: -1;
-        }
-        label {
-            display: inline-block;
-            background-color: #b78727;
-            color: white;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-        }
-        label:hover {
-            background-color: #8c661f;
-        }
-        .navbar {
-            background-color: #0a369d; /* 深蓝色背景 */
-            padding: 10px;
-            text-align: center;
-        }
-        .navbar a {
-            display: inline-block;
-            margin: 0 15px;
-            background-color: transparent;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .navbar a:hover {
-            background-color: #b78727;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css"><!-- 引出css样式，方便维护 -->
 </head>
+
 <body>
     <div class="navbar">
         <a href="http://ucdsb.richis.top" target="_blank">课表导出</a>
@@ -120,6 +28,7 @@
         <button id="downloadBtn" class="btn" style="display: none;" disabled></button>
         <p style="color: gray; font-size: 12px;">该工具不能保证完美适配每个人的课表，请自行检查课程时间地点。如有异常，请<a href="mailto:rzjin@ucdavis.edu">联系我</a>。</p>
     </div>
+
     <script>
         const weekdy = {"M":"MO","T":"TU","W":"WE","R":"TH","F":"FR"};
         const wkdynum = {"MO":1,"TU":2,"WE":3,"TH":4,"FR":5};
@@ -317,7 +226,7 @@
             return [result, endIndex + 1];
         }
 
-        async function findCoursesDetails(fileContent, numbers) {
+        function findCoursesDetails(fileContent, numbers) {
             numbers.forEach(number => {
                 const targetStr1 = `"ID":"${number}"`;
                 const targetStr2 = `CourseDetails.t${number}.REGISTRATION_STATUS = `;
@@ -377,15 +286,15 @@
 
         let icsContent = '';
 
-        async function icsExport(fileContent) {
-            const registeredId = await findId(fileContent);
+        function icsExport(fileContent) {
+            const registeredId = findId(fileContent);
             const uniqueRegisteredId = removeDfrt(registeredId);
 
             const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
             const footer = "\nEND:VCALENDAR";
 
             icsContent = header;
-            await findCoursesDetails(fileContent, uniqueRegisteredId);
+            findCoursesDetails(fileContent, uniqueRegisteredId);
             courseOutput(uniqueRegisteredId);
             finalExamOutput(uniqueRegisteredId);
             dropExport(uniqueRegisteredId);
@@ -477,6 +386,7 @@
     <p>2025-01-07: 添加英文辅助按钮（跳转Google翻译网页）</p>
     <p>2025-01-06: 修复了部分课程时间错误的问题</p>
 </div>
+
 <div class="container" style="text-align: left; margin-top: 20px;">
     <h2>使用教程</h2>
     <p>I.   打开<a href="https://my.ucdavis.edu/schedulebuilder/" target="_blank">Schedule Builder</a>并登录到选课页面。</p>
@@ -485,6 +395,7 @@
     <p>IV.  点击“下载”按钮，下载生成的ICS文件</p>
     <p>V.   导入ICS文件到您的日历应用</p>
 </div>
+
 <div class="container" style="text-align: left; margin-top: 20px;">
     <h2>Q&A</h2>
     <!-- 这里可以添加具体的Q&A内容 -->
@@ -497,12 +408,14 @@
     <p>A: 该工具不能保证完美适配每个人的课表，请自行检查课程时间地点。如有异常，请<a href="mailto:rzjin@ucdavis.edu">联系我</a>。</p>
 
 </div>
+
 <div class="container" style="text-align: center; margin-top: 20px;">
     <a href="https://www.xiaohongshu.com/user/profile/5d3c1440000000001200a9e3" target="_blank">
         <img src="xhscode.png" alt="小红书二维码" style="border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); width: 200px;">
     </a>
     <p style="margin-top: 10px;">欢迎关注我的小红书</p>
 </div>
+
 <!-- Default Statcounter code for UCDavisSB
 http://ucdsb.richis.top -->
 <script type="text/javascript">
@@ -520,5 +433,7 @@ http://ucdsb.richis.top -->
     alt="Web Analytics"
     referrerPolicy="no-referrer-when-downgrade"></a></div></noscript>
     <!-- End of Statcounter Code -->
+
 </body>
+
 </html>
