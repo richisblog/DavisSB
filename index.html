@@ -180,8 +180,8 @@
                 if (dropTime[number] === "null") {
                     return;
                 }
-                const dtstart = `DTSTART;TZID=America/Los_Angeles:${dropTime[number]}\n`;
-                const dtend = `DTEND;TZID=America/Los_Angeles:${dropTime[number].slice(0, -6)}235959\n`;
+                const dtstart = `DTSTART;TZID=America/Los_Angeles:${dropTime[number].slice(0, -7)}\n`;
+                const dtend = `DTEND;TZID=America/Los_Angeles:${dropTime[number].slice(0, -7)}\n`;
                 const summary = `SUMMARY:${courseName[number]} drop day\n`;
                 icsContent += header + dtstart + dtend + summary + "TRANSP:FREE\n" + footer;
             });
