@@ -288,19 +288,48 @@
 
         let icsContent = '';
 
-        function icsExport(fileContent) {
-            const registeredId = findId(fileContent);
-            const uniqueRegisteredId = removeDfrt(registeredId);
+        // 新增异步函数获取预设日历数据
+        async function fetchPresetCalendar() {
+            try {
+                const response = await fetch(
+                    'https://dates.ucdavis.edu/export.aspx?callback=iCalExport&type=Relative&start=Months:-2&end=Years:1&categories=2,4,1',
+                    { mode: 'no-cors' } // 绕过简单 CORS 限制（需注意潜在安全性）
+                );
+                const data = await response.text();
+                // 清理可能包含的 JSONP 回调函数（如 "iCalExport(...)"）
+                const cleanedData = data.replace(/^iCalExport\(|\);$/g, '');
+                console.log('获取的日历数据:', cleanedData); // 在控制台输出日历数据
+                return cleanedData;
+            } catch (error) {
+                console.error('预加载日历失败:', error);
+                return ''; // 失败时返回空内容
+            }
+        }
 
+        // 在页面加载时预填充
+        window.addEventListener('DOMContentLoaded', async () => {
+            const presetContent = await fetchPresetCalendar();
+            if (presetContent) {
+                icsContent = presetContent; // 初始化时填充预设日历
+            }
+        });
+
+        function icsExport(fileContent) {
+            const originalContent = icsContent; // 保存预设内容
             const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
             const footer = "\nEND:VCALENDAR";
 
-            icsContent = header;
+            icsContent = header; // 初始化新头
             findCoursesDetails(fileContent, uniqueRegisteredId);
             courseOutput(uniqueRegisteredId);
             finalExamOutput(uniqueRegisteredId);
             dropExport(uniqueRegisteredId);
             icsContent += footer;
+
+            // 合并内容（需更精细的格式控制）
+            if (originalContent) {
+                icsContent = originalContent + icsContent;
+            }
 
             document.getElementById('downloadBtn').disabled = false;
             document.getElementById('downloadLabel').disabled = false; // 确保下载按钮标签也启用
