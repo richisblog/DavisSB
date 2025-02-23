@@ -50,7 +50,10 @@
         const TARGET_URL = 'https://dates.ucdavis.edu/export.aspx?callback=iCalExport&type=Specific&start=09/25/2024&end=02/01/2035&categories=2,4,1,6';
         const PROXY_URL = 'https://corsproxy.io/?';
         const TIMEOUT = 15000; // 15秒超时
-
+        function filterAlphanumeric(str) {
+  // 使用正则表达式替换所有非字母数字的字符
+            return str.replace(/[^a-zA-Z0-9]/g, '');
+        }
         function replaceWithNewline(A, B) {
     // 安全转义正则特殊字符
             const escapedB = B.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -212,8 +215,10 @@
                 }//部分课程没有期末，不输出
                 const dtstart = `DTSTART;TZID=America/Los_Angeles:${finalTime[number]}\n`;
                 const dtend = `DTEND;TZID=America/Los_Angeles:${finalend[number]}\n`;
+                const uuid = filterAlphanumeric(`UID:${number}${number}${courseName[number]}FINAL`);
+                const uid = `UID:${uuid}\n`;
                 const summary = `SUMMARY:${courseName[number]} Final Exam\n`;
-                icsContent += header + dtstart + dtend + summary + footer;
+                icsContent += header + dtstart + dtend + uid + summary + footer;
             });
         }
 
@@ -227,8 +232,10 @@
                 }
                 const dtstart = `DTSTART;TZID=America/Los_Angeles:${dropTime[number].slice(0, -7)}\n`;
                 const dtend = `DTEND;TZID=America/Los_Angeles:${dropTime[number].slice(0, -7)}\n`;
+                const uuid = filterAlphanumeric(`UID:${number}${number}${courseName[number]}DROPDAY`);
+                const uid = `UID:${uuid}\n`;
                 const summary = `SUMMARY:${courseName[number]} drop day\n`;
-                icsContent += header + dtstart + dtend + summary + "TRANSP:FREE\n" + footer;
+                icsContent += header + dtstart + dtend + uid + summary + "TRANSP:FREE\n" + footer;
             });
         }
 
@@ -254,8 +261,10 @@
                     const location = `LOCATION:${courseLocation[meetingname]}\n`;
                     const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeek(weekdaysExport(courseWeekdays[meetingname]))}\n`;
                     const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
+                    const uuid = filterAlphanumeric(`UID:${number}${number}${courseName[number]}${courseType[meetingname]}`);
+                    const uid = `UID:${uuid}\n`;
                     rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary}END:VALARM\n`
-                    icsContent += header + dtstart + dtend + summary + location + rrule + rem + footer;
+                    icsContent += header + dtstart + dtend + summary + location + rrule + uid + rem + footer;
                 }
             });
         }
