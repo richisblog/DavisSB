@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>日历数据展示</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        .container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+            max-height: 70vh;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #e3f2fd;
+            border-radius: 8px;
+            color: #0d47a1;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: #0d47a1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #b71c1c;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #ffcdd2;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>UC Davis 日历数据</h1>
+        <div class="loading">
+            <div class="spinner"></div>
+            <span>正在后台获取数据...</span>
+        </div>
+        <pre id="output"></pre>
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        // 配置参数
+        const TARGET_URL = 'https://dates.ucdavis.edu/export.aspx?callback=iCalExport&type=Relative&start=Months:-2&end=Years:2&categories=2,4,1';
+        const PROXY_URL = 'https://corsproxy.io/?';
+        const TIMEOUT = 15000; // 15秒超时
+
+        // 主函数
+        async function fetchData() {
+            try {
+                // 通过代理发送请求
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_URL), {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
+                
+                // 获取原始文本数据
+                const data = await response.text();
+                
+                // 处理数据
+                displayData(data);
+            } catch (error) {
+                handleError(error);
+            } finally {
+                document.querySelector('.loading').style.display = 'none';
+            }
+        }
+
+        // 显示数据
+        function displayData(data) {
+            const output = document.getElementById('output');
+            
+            // 基本格式美化
+            const formattedData = data
+                .replace(/(BEGIN:\w+)/g, '\n$1\n')
+                .replace(/(END:\w+)/g, '\n$1\n')
+                .replace(/(\r\n|\r|\n){2,}/g, '\n');
+
+            output.textContent = formattedData;
+            
+            // 添加语法高亮
+            highlightICS(output);
+        }
+
+        // 简单的语法高亮
+        function highlightICS(element) {
+            const html = element.innerHTML
+                .replace(/(BEGIN:\w+|END:\w+)/g, '<span style="color: #2e7d32;">$1</span>')
+                .replace(/(VERSION:|PRODID:|DTSTART:|DTEND:|SUMMARY:|LOCATION:)/g, '<span style="color: #d32f2f;">$1</span>')
+                .replace(/(\d{8}T\d{6}Z)/g, '<span style="color: #1976d2;">$1</span>');
+            
+            element.innerHTML = html;
+        }
+
+        // 错误处理
+        function handleError(error) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'block';
+            
+            let message = error.message;
+            if (message.includes('aborted')) message = '请求超时，请检查网络连接';
+            if (message.includes('Failed to fetch')) message = '网络连接失败';
+
+            errorDiv.innerHTML = `
+                <strong>错误发生：</strong>${message}<br>
+                <small>您可以尝试：<br>
+                1. 刷新页面重试<br>
+                2. 检查网络连接<br>
+                3. 稍后再试</small>
+            `;
+        }
+
+        // 初始化执行
+        window.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>

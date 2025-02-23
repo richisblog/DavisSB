@@ -46,7 +46,37 @@
         const courseStarttime = {};
         const courseEndtime = {};
         const courseMeetingTime = {};
+        const officaldata ='';
+        const TARGET_URL = 'https://dates.ucdavis.edu/export.aspx?callback=iCalExport&type=Relative&start=Months:-2&end=Years:2&categories=2,4,1';
+        const PROXY_URL = 'https://corsproxy.io/?';
+        const TIMEOUT = 15000; // 15秒超时
 
+        // 主函数
+        async function fetchData() {
+            try {
+                // 通过代理发送请求
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
+
+                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_URL), {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
+                
+                // 获取原始文本数据
+                officaldata = await response.text();
+                console.log(officaldata);
+            } catch (error) {
+                handleError(error);
+            } finally {
+                document.querySelector('.loading').style.display = 'none';
+            }
+        }
+        window.addEventListener('DOMContentLoaded', fetchData);
+        
         function sortWeek(weekdaysStr) {//给星期几排序，其实应该没用但是以防万一？
             const weekOrder = ["MO", "TU", "WE", "TH", "FR"];
             const weekList = weekdaysStr.split(',');
@@ -286,7 +316,7 @@
             });
         }
 
-        let icsContent = '';
+        let icsContent = officaldata;
 
         function icsExport(fileContent) {
             const registeredId = findId(fileContent);
@@ -295,7 +325,7 @@
             const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
             const footer = "\nEND:VCALENDAR";
 
-            icsContent = header;
+            icsContent = officaldata+header;
             findCoursesDetails(fileContent, uniqueRegisteredId);
             courseOutput(uniqueRegisteredId);
             finalExamOutput(uniqueRegisteredId);
@@ -379,6 +409,7 @@
             link.click();
 
         });
+        
     </script>
 <div class="container" style="text-align: left; margin-top: 20px;">
     <h2>还想要哪些功能？ <a href="mailto:rzjin@ucdavis.edu">联系我</a></h2>
