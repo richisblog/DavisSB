@@ -51,6 +51,17 @@
         const PROXY_URL = 'https://corsproxy.io/?';
         const TIMEOUT = 15000; // 15秒超时
 
+        function replaceWithNewline(A, B) {
+    // 安全转义正则特殊字符
+            const escapedB = B.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // 创建全局正则表达式
+            const regex = new RegExp(escapedB, 'g');
+    
+    // 执行替换操作
+            return A.replace(regex, '\n');
+        }
+
         // 主函数
         async function fetchData() {
             try {
@@ -67,15 +78,19 @@
                 if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
                 
                 // 获取原始文本数据
-                officaldata = await response.text();
-                console.log(officaldata);
+                data = await response.text();
+                data.replace("END:VCALENDAR", '\n');
+                data=replaceWithNewline(data,"END:VCALENDAR");
+                console.log(data);
+                
+                icsContent = data+icsContent;
             } catch (error) {
                 handleError(error);
             } finally {
                 document.querySelector('.loading').style.display = 'none';
             }
         }
-        window.addEventListener('DOMContentLoaded', fetchData);
+        
         
         function sortWeek(weekdaysStr) {//给星期几排序，其实应该没用但是以防万一？
             const weekOrder = ["MO", "TU", "WE", "TH", "FR"];
@@ -322,16 +337,19 @@
             const registeredId = findId(fileContent);
             const uniqueRegisteredId = removeDfrt(registeredId);
 
-            const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
+           // const header = `BEGIN:VCALENDAR\nCALSCALE:GREGORIAN\nVERSION:2.0\nPRODID:rzjin@ucdavis.edu\nMETHOD:PUBLISH\n\n`;
+            const header = '\n';
             const footer = "\nEND:VCALENDAR";
 
             icsContent = officaldata+header;
+            
             findCoursesDetails(fileContent, uniqueRegisteredId);
             courseOutput(uniqueRegisteredId);
             finalExamOutput(uniqueRegisteredId);
             dropExport(uniqueRegisteredId);
+            fetchData();
+            
             icsContent += footer;
-
             document.getElementById('downloadBtn').disabled = false;
             document.getElementById('downloadLabel').disabled = false; // 确保下载按钮标签也启用
         }
