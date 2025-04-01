@@ -1,3 +1,8 @@
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
 ### 专为 UCDavis 学生设计的课表导出工具
 
 作为一名 UCDavis 学生，我开发了这个课表导出工具，旨在简化 Schedule Builder 数据导出到日历的流程，为大家节省时间并提高效率。
@@ -28,3 +33,8 @@ UCDavis 的 Schedule Builder 缺少将课表直接导出为日历文件的功能
 #### 工具地址
 [课表导出工具](http://ucdsb.richis.top/)
 
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
+ucdsb.richis.top
