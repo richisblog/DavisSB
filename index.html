@@ -187,7 +187,14 @@
             const second = timeParts[5].padStart(2, '0');
             return `${year}${month}${day}T${hour}${minute}${second}`;
         }
-
+        function hash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = (hash << 5) - hash + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return hash;
+        }
         function weekdaysExport(dateStr) {//课程信息里用的一个字母代表星期信息，ics文件语法用两个字母代表星期，进行转换
             return dateStr.replace("M", 'MO').replace("T", 'TU').replace("W", 'WE').replace("R", 'TH').replace("F", 'FR');
         }
@@ -261,7 +268,7 @@
                     const location = `LOCATION:${courseLocation[meetingname]}\n`;
                     const rrule = `RRULE:FREQ=WEEKLY;UNTIL=${courseEndtime[meetingname].slice(0, 9)}235959Z;BYDAY=${sortWeek(weekdaysExport(courseWeekdays[meetingname]))}\n`;
                     const summary = `SUMMARY:${courseName[number]} ${courseType[meetingname]}\n`;
-                    const uuid = filterAlphanumeric(`UID:${number}${number}${courseName[number]}${courseType[meetingname]}`);
+                    const uuid = filterAlphanumeric(`UID:${number}${number}${hash(dtstart+dtend)}${location}${courseName[number]}${courseType[meetingname]}`);
                     const uid = `UID:${uuid}\n`;
                     rem = `BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION: ${summary}END:VALARM\n`
                     icsContent += header + dtstart + dtend + summary + location + rrule + uid + rem + footer;
@@ -500,6 +507,9 @@ http://ucdsb.richis.top -->
         <p>版权所有 &copy; 2025 Richis, Ruizhi Jin</p>
     </div>
 
+    <div class="container" style="text-align: center; margin-top: 20px;">
+        <p style="color: red; font-size: 12px;">注意：如果课程数据导出错误，作者不负任何责任。请务必自行检查导出数据。</p>
+    </div>
 </body>
 
 </html>
